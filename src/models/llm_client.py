@@ -1,3 +1,8 @@
+"""
+src/models/llm_client.py
+LLM client with Context-Aware and Topic-Shift-Aware Search Planning.
+"""
+
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer
 from src.utils.config import MODEL_ID, CACHE_DIR, MAX_NEW_TOKENS, TOP_P, REPETITION_PENALTY
@@ -23,34 +28,35 @@ class LLMClient:
         self.model.eval()
         self.streamer = TextStreamer(self.tokenizer, skip_prompt=True, skip_special_tokens=True)
 
-    def plan_search_query(self, user_query: str) -> str:
+    def plan_search_query(self, user_query: str, recent_context: str = "") -> str:
         """
         Few-Shot Search Planner.
-        Teaches Qwen-1.5B the exact boundary between search and internal reasoning.
+        Explicitly blocks web searches for math calculations, equations, and logic puzzles.
         """
         planner_prompt = [
             {
                 "role": "system",
                 "content": (
-                    "You are an AI Search Planner. Your task is to output the optimal search query if external facts or new documentation are needed, "
-                    "or output 'NONE' if the question can be solved with internal code debugging, math, logic, or conversation.\n\n"
+                    "You are an AI Search Planner. Output a concise search query if live external facts, news, prices, "
+                    "or framework docs are needed.\n"
+                    "CRITICAL RULE: If the user query is a math calculation, algebra equation, word problem, probability question, "
+                    "or financial interest formula, output EXACTLY 'NONE'. Do not search the web for math.\n\n"
                     "EXAMPLES:\n"
-                    "User: Find the bug in: const user = users.find(u => u.id = 2);\n"
+                    "User: If $10,000 is invested at 6% compounded quarterly for 3 years, what is the amount?\n"
                     "Search Query: NONE\n\n"
-                    "User: Write a python function to reverse a linked list\n"
+                    "User: Two trains start toward each other 600 miles apart at 60 mph and 90 mph\n"
+                    "Search Query: NONE\n\n"
+                    "User: A bag contains 5 red, 7 blue, and 8 green marbles. Probability both are blue?\n"
                     "Search Query: NONE\n\n"
                     "User: Who is the current President of Sri Lanka?\n"
                     "Search Query: current President of Sri Lanka\n\n"
-                    "User: What is the useActionState hook in React 19?\n"
-                    "Search Query: React 19 useActionState hook documentation\n\n"
-                    "User: BTC price live USD\n"
-                    "Search Query: Bitcoin price USD live\n\n"
-                    "User: Hello, how are you today?\n"
-                    "Search Query: NONE\n\n"
-                    "INSTRUCTION: Output ONLY the concise search query or 'NONE'. No explanation."
+                    "Output ONLY the concise search query or 'NONE'. No explanation."
                 )
             },
-            {"role": "user", "content": f"User: {user_query}\nSearch Query:"}
+            {
+                "role": "user",
+                "content": f"Previous Topic: {recent_context or 'None'}\nUser: {user_query}\nSearch Query:"
+            }
         ]
 
         prompt_text = self.tokenizer.apply_chat_template(planner_prompt, tokenize=False, add_generation_prompt=True)
@@ -59,16 +65,19 @@ class LLMClient:
         with torch.no_grad():
             outputs = self.model.generate(
                 **inputs,
-                max_new_tokens=15,
-                do_sample=False,  # Strict deterministic output
+                max_new_tokens=20,
+                do_sample=False,
                 pad_token_id=self.tokenizer.pad_token_id
             )
 
         new_tokens = outputs[0][inputs.input_ids.shape[1]:]
         decision = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
-        
-        # Strip quotes or leftover prefixes
         decision = decision.replace('"', '').replace("'", "").replace("Search Query:", "").strip()
+        
+        lower = decision.lower()
+        if lower.startswith(("write ", "create ", "code ", "how to ")) or any(m in lower for m in ["invested", "trains", "bag contains", "probability", "calculate", "solve"]):
+            return "NONE"
+            
         return decision
 
     def generate(self, messages: list, is_factual_rag: bool = False) -> str:
@@ -79,17 +88,17 @@ class LLMClient:
 
         gen_kwargs = {
             "max_new_tokens": MAX_NEW_TOKENS,
-            "repetition_penalty": REPETITION_PENALTY,
+            "repetition_penalty": 1.18,
             "eos_token_id": self.tokenizer.eos_token_id,
             "pad_token_id": self.tokenizer.pad_token_id,
             "streamer": self.streamer
         }
 
         if is_factual_rag:
-            gen_kwargs["do_sample"] = False  # Greedy for strict factual fidelity
+            gen_kwargs["do_sample"] = False  # Deterministic greedy decoding for search facts
         else:
             gen_kwargs["do_sample"] = True
-            gen_kwargs["temperature"] = 0.3
+            gen_kwargs["temperature"] = 0.25
             gen_kwargs["top_p"] = TOP_P
 
         with torch.no_grad():
