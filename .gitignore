@@ -1,1 +1,46 @@
 .env
+.env.*
+
+Matser Prompt
+
+# Python virtual environments
+.venv/
+venv/
+env/
+
+# Python cache and build artifacts
+__pycache__/
+*.py[cod]
+*.pyo
+*.pyd
+.pytest_cache/
+.mypy_cache/
+.ruff_cache/
+.coverage
+.coverage.*
+htmlcov/
+
+# Distribution / packaging
+build/
+dist/
+*.egg-info/
+.eggs/
+
+# IDE/editor files
+.vscode/
+.idea/
+*.swp
+*.swo
+
+# Local data and generated outputs
+*.log
+logs/
+output/
+results/
+checkpoints/
+wandb/
+mlruns/
+
+# OS junk
+.DS_Store
+Thumbs.db

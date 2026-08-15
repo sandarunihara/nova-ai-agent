@@ -8,21 +8,22 @@ from src.agent.agent import NovaAgent
 
 def main():
     agent = NovaAgent()
-    print("\n" + "=" * 60)
-    print("✨ NOVA AI Agent Ready (Modular Architecture)")
-    print("Commands: 'clear' to reset | 'exit' to quit")
-    print("=" * 60 + "\n")
+    print("\n" + "═" * 60)
+    print("  ✨ NOVA AI — Personal Assistant for Mr. Sandaru")
+    print("  🔧 Modular Architecture | Loyal & Ready to Serve")
+    print("  📝 Commands: 'clear' to reset | 'exit' to quit")
+    print("═" * 60 + "\n")
 
     while True:
         user_input = input("\nSandaru: ").strip()
         if not user_input:
             continue
         if user_input.lower() in ["exit", "quit", "q"]:
-            print("\nNova: Powering down. Have a productive day, Sandaru.")
+            print("\nNova: Powering down. It was an honor serving you, Sir. Have a productive day.")
             break
         if user_input.lower() == "clear":
             agent.memory.reset()
-            print("🧹 Memory cleared!")
+            print("🧹 Memory cleared! Ready for your next command, Sir.")
             continue
 
         agent.process_turn(user_input)
