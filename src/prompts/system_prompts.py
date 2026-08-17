@@ -139,8 +139,66 @@ def build_math_narrative_prompt(user_query: str, expression: str, exact_result: 
     the steps around a number it cannot get wrong.
     """
     return f"""[User Math Problem]: {user_query}
-[Pre-Computed Mathematical Proof]:
-- Equation/Expression: {expression}
+
+[VERIFIED COMPUTATION — DO NOT OVERRIDE]:
+- Expression Used: {expression}
 - Exact Verified Result: {exact_result}
 
-Instruction: Write out the step-by-step solution for Sir, ensuring you incorporate the exact verified result ({exact_result}) naturally into the final answer. Address the user as "Sir". No preamble, no conversational filler."""
+CRITICAL INSTRUCTION:
+- Your ONLY job is to write a clear, step-by-step mathematical explanation that arrives at EXACTLY {exact_result}.
+- You MUST use {exact_result} as your final answer. Do NOT compute a different number.
+- Show the mathematical reasoning that leads to this exact result.
+- Address the user as "Sir".
+- No preamble, no conversational filler, no sign-offs.
+- State the final answer clearly at the end using the exact verified result."""
+
+
+def build_math_classifier_prompt(user_query: str) -> list:
+    """
+    Few-shot prompt to classify whether a user query is a math/calculation problem.
+    Returns the message list for LLM classification.
+    """
+    return [
+        {
+            "role": "system",
+            "content": (
+                "You are a query classifier. Determine if the user's query is a math problem, "
+                "calculation, word problem, probability question, geometry problem, physics calculation, "
+                "or any question that requires numerical computation to answer.\n\n"
+                "Reply with EXACTLY one word: MATH or NOT_MATH\n\n"
+                "EXAMPLES:\n"
+                "User: If $10,000 is invested at 6% compounded quarterly, what is the total after 3 years?\n"
+                "Answer: MATH\n\n"
+                "User: A bag contains 5 red, 7 blue, 8 green marbles. Probability both drawn are blue?\n"
+                "Answer: MATH\n\n"
+                "User: A bacterial culture starts with 500 and triples every 4 hours. How many after 24 hours?\n"
+                "Answer: MATH\n\n"
+                "User: From 50 meters away, angle of elevation is 60 degrees. What is the height?\n"
+                "Answer: MATH\n\n"
+                "User: A ladder 25 feet long leans against a wall. Base is 7 feet away. How high is the top?\n"
+                "Answer: MATH\n\n"
+                "User: Pipe A fills in 6 hours, Pipe B drains in 9 hours. How long to fill together?\n"
+                "Answer: MATH\n\n"
+                "User: A rectangular garden has 100 meters of fencing for three sides. Maximum area?\n"
+                "Answer: MATH\n\n"
+                "User: Two trains start 600 miles apart moving toward each other at 60 and 90 mph. When do they meet?\n"
+                "Answer: MATH\n\n"
+                "User: What is the derivative of x^3 + 2x?\n"
+                "Answer: MATH\n\n"
+                "User: Who is the current president of Sri Lanka?\n"
+                "Answer: NOT_MATH\n\n"
+                "User: What is the weather in Colombo?\n"
+                "Answer: NOT_MATH\n\n"
+                "User: Explain how neural networks work.\n"
+                "Answer: NOT_MATH\n\n"
+                "User: Write a Python function to sort a list.\n"
+                "Answer: NOT_MATH\n\n"
+                "User: What is the capital of France?\n"
+                "Answer: NOT_MATH\n\n"
+                "User: Tell me about the history of computers.\n"
+                "Answer: NOT_MATH\n\n"
+                "Reply with EXACTLY one word: MATH or NOT_MATH"
+            )
+        },
+        {"role": "user", "content": user_query}
+    ]

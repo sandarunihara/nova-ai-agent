@@ -6,6 +6,7 @@ LLM client with Context-Aware and Topic-Shift-Aware Search Planning.
 import torch
 from transformers import AutoModelForCausalLM, AutoTokenizer, BitsAndBytesConfig, TextStreamer
 from src.utils.config import MODEL_ID, CACHE_DIR, MAX_NEW_TOKENS, TOP_P, REPETITION_PENALTY
+from src.prompts.system_prompts import build_math_classifier_prompt
 
 class LLMClient:
     def __init__(self):
@@ -73,11 +74,7 @@ class LLMClient:
         new_tokens = outputs[0][inputs.input_ids.shape[1]:]
         decision = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
         decision = decision.replace('"', '').replace("'", "").replace("Search Query:", "").strip()
-        
-        lower = decision.lower()
-        if lower.startswith(("write ", "create ", "code ", "how to ")) or any(m in lower for m in ["invested", "trains", "bag contains", "probability", "calculate", "solve"]):
-            return "NONE"
-            
+
         return decision
 
     def generate(self, messages: list, is_factual_rag: bool = False) -> str:
@@ -106,3 +103,33 @@ class LLMClient:
             
         new_tokens = outputs[0][inputs.input_ids.shape[1]:]
         return self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip()
+
+    def classify_math_query(self, user_query: str) -> bool:
+        """
+        Uses LLM with few-shot prompt to classify whether a query is a math problem.
+        Returns True if the query requires numerical computation.
+        """
+        messages = build_math_classifier_prompt(user_query)
+
+        prompt_text = self.tokenizer.apply_chat_template(messages, tokenize=False, add_generation_prompt=True)
+        inputs = self.tokenizer(prompt_text, return_tensors="pt").to("cuda")
+
+        with torch.no_grad():
+            outputs = self.model.generate(
+                **inputs,
+                max_new_tokens=5,
+                do_sample=False,
+                pad_token_id=self.tokenizer.pad_token_id
+            )
+
+        new_tokens = outputs[0][inputs.input_ids.shape[1]:]
+        decision = self.tokenizer.decode(new_tokens, skip_special_tokens=True).strip().upper()
+
+        # Parse the response — look for MATH or NOT_MATH
+        if "NOT_MATH" in decision:
+            return False
+        if "MATH" in decision:
+            return True
+
+        # Fallback: if unclear, default to False (let general reasoning handle it)
+        return False

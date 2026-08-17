@@ -41,11 +41,27 @@ _WEATHER_PATTERNS = [
     ]
 ]
 
-_MATH_PATTERNS = [
-    re.compile(p, re.IGNORECASE) for p in [
-        r"\b(invested|compound|probability|marbles|trains|calculate|fencing|garden|interest|percent|ratio|solve for|derivative|integral)\b",
-    ]
-]
+
+# Fast-path regex: queries containing digits + math-like context are candidates for LLM classification
+_MATH_CANDIDATE_PATTERN = re.compile(
+    r'(?:'
+    r'\d+\s*[%$°]|'           
+    r'\d+.*\d+|'               
+    r'angle|height|area|volume|radius|diameter|perimeter|'
+    r'how many|how long|how far|how much|how fast|'
+    r'what is the .*(total|sum|product|difference|result|value|answer|height|distance|speed|rate|cost|price|amount)|'
+    r'find the|solve|calculate|compute|evaluate|determine|'
+    r'probability|chance|odds|'
+    r'invested|interest|compound|'
+    r'equation|formula|'
+    r'factorial|permutation|combination|'
+    r'triangle|circle|rectangle|square|cylinder|sphere|'
+    r'sin|cos|tan|sqrt|log|'
+    r'rate|speed|velocity|acceleration|'
+    r'pipe|tank|fill|empty|drain|'
+    r'ladder|wall|feet|meters'
+    r')', re.IGNORECASE
+)
 
 _USER_IDENTITY_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [r"\bwho am i\b", r"\bmy name\b"]]
 _CREATOR_PATTERNS = [re.compile(p, re.IGNORECASE) for p in [r"\byour (creator|owner|master)\b", r"\bwho (created|made|built|owns) you\b", r"\bcreated you\b"]]
@@ -77,12 +93,20 @@ class NovaAgent:
     def is_weather_query(query: str) -> bool:
         return any(p.search(query) for p in _WEATHER_PATTERNS)
 
-    @staticmethod
-    def is_math_query(query: str) -> bool:
-        # Exclude queries asking about presidents or general geography
-        if any(w in query.lower() for w in ["president", "who is", "weather", "capital"]):
+    def is_math_query(self, query: str) -> bool:
+        """Uses a fast-path regex pre-check + LLM classifier to detect math problems."""
+        # Exclude queries clearly about identity, weather, or general knowledge
+        lower = query.lower()
+        if any(w in lower for w in ["president", "who is", "weather", "capital of", "explain", "tell me about", "write a", "create a"]):
             return False
-        return any(p.search(query) for p in _MATH_PATTERNS)
+
+        # Fast-path: if the query doesn't look like it could be math, skip LLM call
+        if not _MATH_CANDIDATE_PATTERN.search(query):
+            return False
+
+        # Use LLM classifier for the final decision
+        print("🔍 [Nova Engine] Classifying query intent...")
+        return self.llm.classify_math_query(query)
 
     @staticmethod
     def _clean_response(text: str) -> str:
