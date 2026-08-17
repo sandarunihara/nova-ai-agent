@@ -1,6 +1,6 @@
 """
 src/agent/agent.py
-Nova Agent with Context-Aware Search, Dedicated Weather Tool, Safe Math Solver, and Response Sanitization.
+Nova Agent with Context-Aware Search, Weather, Math Solver, Document RAG, and Response Sanitization.
 """
 
 import re
@@ -9,6 +9,7 @@ from src.models.llm_client import LLMClient
 from src.tools.search import search_and_fetch_knowledge
 from src.tools.weather import get_live_weather
 from src.tools.math_solver import extract_and_solve_math
+from src.tools.document_rag import DocumentStore
 from src.prompts.system_prompts import (
     build_search_augmented_prompt,
     build_math_narrative_prompt,
@@ -16,6 +17,11 @@ from src.prompts.system_prompts import (
     build_user_identity_prompt,
     build_creator_prompt,
     build_greeting_prompt,
+    build_document_rag_prompt,
+)
+from src.utils.config import (
+    EMBEDDING_MODEL_ID, CACHE_DIR, DOC_CHUNK_SIZE,
+    DOC_CHUNK_OVERLAP, DOC_SEARCH_TOP_K, DOC_RELEVANCE_THRESHOLD,
 )
 
 _FILLER_PATTERNS = [
@@ -73,6 +79,12 @@ class NovaAgent:
         self.llm = LLMClient()
         self.memory = ConversationMemory()
         self.last_topic = ""
+        self.doc_store = DocumentStore(
+            embedding_model_id=EMBEDDING_MODEL_ID,
+            chunk_size=DOC_CHUNK_SIZE,
+            chunk_overlap=DOC_CHUNK_OVERLAP,
+            cache_dir=CACHE_DIR,
+        )
 
     @staticmethod
     def classify_identity_query(query: str):
@@ -130,6 +142,39 @@ class NovaAgent:
     def process_turn(self, user_input: str) -> str:
         is_rag = False
 
+        # 0. Document Management Commands
+        lower_input = user_input.lower().strip()
+
+        if lower_input.startswith("load "):
+            filepath = user_input[5:].strip()
+            print(f"\n📄 [Nova Docs] Loading '{filepath}'...")
+            result = self.doc_store.load_document(filepath)
+            if result["success"]:
+                print(f"📄 [Nova Docs] Extracted {result['pages']} page(s), {result['chunks']} chunks indexed.")
+                print(f"📄 [Nova Docs] Document '{result['doc_name']}' is now loaded and searchable.")
+            else:
+                print(f"❌ [Nova Docs] {result['error']}")
+            return ""
+
+        if lower_input == "docs":
+            docs = self.doc_store.list_documents()
+            if not docs:
+                print("\n📄 No documents loaded. Use 'load <filepath>' to add one.")
+            else:
+                print("\n📄 Loaded Documents:")
+                for i, d in enumerate(docs, 1):
+                    print(f"  {i}. {d['name']} — {d['pages']} page(s), {d['chunks']} chunks")
+            return ""
+
+        if lower_input.startswith("unload "):
+            doc_name = user_input[7:].strip()
+            result = self.doc_store.unload_document(doc_name)
+            if result["success"]:
+                print(f"\n📄 [Nova Docs] Removed '{result['doc_name']}' ({result['chunks_removed']} chunks cleared).")
+            else:
+                print(f"\n❌ [Nova Docs] {result['error']}")
+            return ""
+
         # 1. Greeting Check
         if self.is_greeting(user_input):
             print("👋 [Nova Engine] Greeting detected — responding with respect...")
@@ -158,7 +203,14 @@ class NovaAgent:
             else:
                 augmented = user_input
 
-        # 4. Math Solver Engine (Secure Python AST Execution + Narrative Synthesis)
+        # 4. Document RAG — Search loaded documents for relevant context
+        elif self.doc_store.has_documents and (doc_result := self._try_document_search(user_input)):
+            doc_context, source_info, best_score = doc_result
+            print(f"📄 [Nova Docs] Searching loaded documents... (best match: {best_score:.2f} similarity)")
+            augmented = build_document_rag_prompt(user_input, doc_context, source_info)
+            is_rag = True
+
+        # 5. Math Solver Engine (Secure Python AST Execution + Narrative Synthesis)
         elif self.is_math_query(user_input):
             print(f"🧮 [Nova Math Engine] Computing precise math expression...")
             expr, exact_val = extract_and_solve_math(user_input, self.llm)
@@ -171,7 +223,7 @@ class NovaAgent:
                 print("⚠️ [Nova Math Engine] Math extraction fallback to internal reasoning.")
                 augmented = user_input
 
-        # 5. General Search Planning & Web Retrieval
+        # 6. General Search Planning & Web Retrieval
         else:
             search_query = self.llm.plan_search_query(user_input, recent_context=self.last_topic)
 
@@ -206,3 +258,34 @@ class NovaAgent:
         self.memory.add_assistant_message(response)
 
         return response
+
+    def _try_document_search(self, query: str) -> tuple[str, str, float] | None:
+        """
+        Search loaded documents for content relevant to the query.
+        Returns (doc_context, source_info, best_score) if relevant content found,
+        or None if no relevant content.
+        """
+        results = self.doc_store.search(query, top_k=DOC_SEARCH_TOP_K)
+
+        if not results:
+            return None
+
+        best_score = results[0][1]
+
+        if best_score < DOC_RELEVANCE_THRESHOLD:
+            return None
+
+        # Build context from top chunks
+        context_parts = []
+        source_docs = set()
+        for chunk, score in results:
+            if score >= DOC_RELEVANCE_THRESHOLD * 0.7:  # Include slightly below threshold too
+                context_parts.append(
+                    f"[Source: {chunk.doc_name}, Page {chunk.page_num}]\n{chunk.text}"
+                )
+                source_docs.add(chunk.doc_name)
+
+        doc_context = "\n\n---\n\n".join(context_parts)
+        source_info = ", ".join(sorted(source_docs))
+
+        return doc_context, source_info, best_score

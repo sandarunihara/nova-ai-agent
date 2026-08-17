@@ -202,3 +202,26 @@ def build_math_classifier_prompt(user_query: str) -> list:
         },
         {"role": "user", "content": user_query}
     ]
+
+
+def build_document_rag_prompt(user_query: str, doc_context: str, source_info: str) -> str:
+    """
+    Document-grounded RAG prompt.
+    Forces the LLM to answer strictly from the loaded document content.
+    """
+    return f"""<document_reference_data source="{source_info}">
+{doc_context}
+</document_reference_data>
+
+<document_rag_rules>
+- Answer Sir's question using ONLY the content from <document_reference_data> above.
+- Quote or paraphrase directly from the document. Do NOT invent or hallucinate facts.
+- If the document contains the answer, provide it clearly and cite the source document name and page number.
+- If the document does NOT contain enough information to answer the question fully, state exactly what the document DOES say about the topic, then add: "This specific information is not covered in the loaded document. Would you like me to answer using general knowledge instead, Sir?"
+- NEVER output bracketed placeholders like [Insert ...] or [TBD].
+- Address the user as "Sir".
+- No preamble, no sign-offs.
+</document_rag_rules>
+
+[User Query]: {user_query}
+Instruction: Answer Sir's question based strictly on the document content above."""

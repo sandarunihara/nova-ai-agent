@@ -11,7 +11,12 @@ def main():
     print("\n" + "═" * 60)
     print("  ✨ NOVA AI — Personal Assistant for Mr. Sandaru")
     print("  🔧 Modular Architecture | Loyal & Ready to Serve")
-    print("  📝 Commands: 'clear' to reset | 'exit' to quit")
+    print("  📝 Commands:")
+    print("     'load <file>'  — Load a PDF or Markdown file")
+    print("     'docs'         — List loaded documents")
+    print("     'unload <name>'— Remove a loaded document")
+    print("     'clear'        — Reset conversation memory")
+    print("     'exit'         — Quit Nova")
     print("═" * 60 + "\n")
 
     while True:
@@ -26,8 +31,9 @@ def main():
             print("🧹 Memory cleared! Ready for your next command, Sir.")
             continue
 
-        agent.process_turn(user_input)
-        print("-" * 60)
+        result = agent.process_turn(user_input)
+        if result:  # Document commands return empty string and handle their own output
+            print("-" * 60)
 
 if __name__ == "__main__":
     main()
