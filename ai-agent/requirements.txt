@@ -1,0 +1,12 @@
+fastapi>=0.100.0
+uvicorn>=0.22.0
+pydantic>=2.0
+torch>=2.0.0
+transformers>=4.38.0
+bitsandbytes>=0.42.0
+accelerate>=0.27.0
+sentence-transformers>=2.5.0
+PyMuPDF>=1.23.0
+numpy>=1.24.0
+ddgs>=0.1.0
+fpdf2>=2.7.0

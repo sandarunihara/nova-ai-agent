@@ -65,6 +65,7 @@ export default function App() {
       });
       const data = await res.json();
       
+      // Robust LaTeX and math block normalization for KaTeX & ReactMarkdown
       let cleanedResponse = data.response
         .replace(/\\\[/g, '$$')
         .replace(/\\\]/g, '$$')
@@ -322,7 +323,7 @@ export default function App() {
       </div>
 
       {/* MAIN CHAT AREA */}
-      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', backgroundColor: ui.black, marginLeft: isMobile ? 0 : 0 }}>
+      <div style={{ flex: 1, display: 'flex', flexDirection: 'column', justifyContent: 'space-between', backgroundColor: ui.black }}>
         
         <div style={{
           minHeight: '62px',
@@ -374,11 +375,11 @@ export default function App() {
         <div style={{
           flex: 1,
           overflowY: 'auto',
-          padding: '28px 22px',
+          padding: '32px 22px',
           display: 'flex',
           flexDirection: 'column',
-          gap: '22px',
-          maxWidth: '980px',
+          gap: '24px',
+          maxWidth: '920px',
           width: '100%',
           margin: '0 auto'
         }}>
@@ -407,17 +408,22 @@ export default function App() {
                 fontSize: '23px',
                 border: `1px solid ${ui.border}`
               }}>N</div>
-              <h2 style={{ fontSize: '28px', fontWeight: '600', color: ui.text, marginBottom: '10px', margin: 0 }}>How can I help today?</h2>
-              <p style={{ fontSize: '14px', maxWidth: '460px', color: ui.muted, margin: 0 }}>Ask anything, run math, check weather, or upload files for grounded answers.</p>
+              <h2 style={{ fontSize: '28px', fontWeight: '600', color: ui.text, marginBottom: '10px', margin: 0 }}>How can I help today, Sir?</h2>
+              <p style={{ fontSize: '14px', maxWidth: '460px', color: ui.muted, margin: 0 }}>Ask engineering questions, execute precision math, or upload files for grounded answers.</p>
             </div>
           )}
 
           {messages.map((msg, index) => (
-            <div key={index} style={{ display: 'flex', gap: '12px', justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start' }}>
+            <div key={index} style={{
+              display: 'flex',
+              gap: '14px',
+              justifyContent: msg.role === 'user' ? 'flex-end' : 'flex-start',
+              width: '100%'
+            }}>
               {msg.role === 'assistant' && (
                 <div style={{
-                  width: '32px',
-                  height: '32px',
+                  width: '34px',
+                  height: '34px',
                   borderRadius: '50%',
                   background: ui.surface,
                   border: `1px solid ${ui.border}`,
@@ -427,21 +433,24 @@ export default function App() {
                   color: ui.accent,
                   fontWeight: '700',
                   fontSize: '12px',
-                  flexShrink: 0
+                  flexShrink: 0,
+                  marginTop: '2px'
                 }}>N</div>
               )}
+              
               <div style={{ 
-                padding: '15px 16px',
-                borderRadius: '14px',
+                padding: '18px 20px',
+                borderRadius: '16px',
                 maxWidth: '780px',
                 width: '100%',
                 fontSize: '14px',
-                lineHeight: '1.65',
+                lineHeight: '1.7',
                 background: msg.role === 'user' ? ui.surfaceAlt : ui.surface,
                 border: `1px solid ${ui.border}`,
                 color: ui.text,
-                borderBottomRightRadius: msg.role === 'user' ? '6px' : '14px',
-                borderBottomLeftRadius: msg.role === 'assistant' ? '6px' : '14px'
+                boxShadow: msg.role === 'user' ? 'none' : '0 4px 20px rgba(0,0,0,0.25)',
+                borderBottomRightRadius: msg.role === 'user' ? '4px' : '16px',
+                borderBottomLeftRadius: msg.role === 'assistant' ? '4px' : '16px'
               }}>
                 <ReactMarkdown 
                   remarkPlugins={[remarkMath]} 
@@ -455,12 +464,12 @@ export default function App() {
 
                       if (!inline && match) {
                         return (
-                          <div style={{ margin: '16px 0', borderRadius: '10px', overflow: 'hidden', border: `1px solid ${ui.border}`, background: ui.surface }}>
-                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#191919', padding: '8px 16px', fontSize: '12px', color: ui.muted }}>
+                          <div style={{ margin: '16px 0', borderRadius: '12px', overflow: 'hidden', border: `1px solid ${ui.border}`, background: ui.black }}>
+                            <div style={{ display: 'flex', justifyContent: 'space-between', alignItems: 'center', background: '#191919', padding: '10px 16px', fontSize: '12px', color: ui.muted }}>
                               <span style={{ textTransform: 'uppercase', fontWeight: '600', letterSpacing: '0.5px' }}>{match[1]}</span>
                               <button 
                                 onClick={() => copyToClipboard(codeString, codeId)}
-                                style={{ background: 'transparent', border: 'none', color: isCopied ? ui.success : ui.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '2px 6px', borderRadius: '4px', transition: 'color 0.2s' }}
+                                style={{ background: 'transparent', border: 'none', color: isCopied ? ui.success : ui.muted, cursor: 'pointer', display: 'flex', alignItems: 'center', gap: '6px', fontSize: '12px', padding: '4px 8px', borderRadius: '6px', transition: 'all 0.2s' }}
                               >
                                 {isCopied ? <Check size={14} style={{ color: ui.success }} /> : <Copy size={14} />}
                                 {isCopied ? 'Copied!' : 'Copy code'}
@@ -469,7 +478,7 @@ export default function App() {
                             <SyntaxHighlighter
                               language={match[1]}
                               style={vscDarkPlus}
-                              customStyle={{ margin: 0, padding: '16px', background: '#0b0b0b', fontSize: '13px' }}
+                              customStyle={{ margin: 0, padding: '16px', background: '#080808', fontSize: '13px' }}
                             >
                               {codeString}
                             </SyntaxHighlighter>
@@ -487,13 +496,30 @@ export default function App() {
                   {msg.content}
                 </ReactMarkdown>
               </div>
+
+              {msg.role === 'user' && (
+                <div style={{
+                  width: '34px',
+                  height: '34px',
+                  borderRadius: '50%',
+                  background: '#1a73e8',
+                  display: 'flex',
+                  alignItems: 'center',
+                  justifyContent: 'center',
+                  color: '#fff',
+                  fontWeight: '700',
+                  fontSize: '12px',
+                  flexShrink: 0,
+                  marginTop: '2px'
+                }}>SN</div>
+              )}
             </div>
           ))}
 
           {loading && (
-            <div style={{ display: 'flex', gap: '16px', alignItems: 'center' }}>
-              <div style={{ width: '32px', height: '32px', borderRadius: '50%', background: ui.surface, border: `1px solid ${ui.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ui.accent, fontWeight: '700', fontSize: '12px' }}>N</div>
-              <div style={{ fontSize: '12px', color: ui.muted, fontStyle: 'italic' }}>NOVA is processing...</div>
+            <div style={{ display: 'flex', gap: '14px', alignItems: 'center' }}>
+              <div style={{ width: '34px', height: '34px', borderRadius: '50%', background: ui.surface, border: `1px solid ${ui.border}`, display: 'flex', alignItems: 'center', justifyContent: 'center', color: ui.accent, fontWeight: '700', fontSize: '12px' }}>N</div>
+              <div style={{ fontSize: '13px', color: ui.muted, fontStyle: 'italic' }}>NOVA is thinking...</div>
             </div>
           )}
           <div ref={messagesEndRef} />
@@ -501,18 +527,18 @@ export default function App() {
 
         {/* Input Bar */}
         <div style={{ padding: '16px 24px 26px 24px', backgroundColor: ui.black, borderTop: `1px solid ${ui.border}` }}>
-          <form onSubmit={handleSend} style={{ maxWidth: '980px', margin: '0 auto', position: 'relative', display: 'flex', alignItems: 'center' }}>
+          <form onSubmit={handleSend} style={{ maxWidth: '920px', margin: '0 auto', position: 'relative', display: 'flex', alignItems: 'center' }}>
             <input
               type="text"
               value={input}
               onChange={(e) => setInput(e.target.value)}
-              placeholder="Ask anything or query loaded documents..."
+              placeholder="Ask anything or query loaded documents, Sir..."
               style={{
                 width: '100%',
                 backgroundColor: ui.surface,
                 border: `1px solid ${ui.border}`,
-                borderRadius: '14px',
-                padding: '15px 56px 15px 18px',
+                borderRadius: '16px',
+                padding: '16px 56px 16px 20px',
                 fontSize: '14px',
                 color: ui.text,
                 outline: 'none',
@@ -524,7 +550,7 @@ export default function App() {
               disabled={loading || !input.trim()}
               style={{
                 position: 'absolute',
-                right: '10px',
+                right: '12px',
                 background: ui.accent,
                 border: 'none',
                 borderRadius: '10px',
