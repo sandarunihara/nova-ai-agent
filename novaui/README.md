@@ -1,16 +1,36 @@
-# React + Vite
+# 🎨 NOVA Web UI
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+> **Modern React 19 + Vite Frontend Interface for NOVA AI Agent System**
 
-Currently, two official plugins are available:
+---
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+## 📌 Overview
 
-## React Compiler
+This is the web frontend interface for **NOVA AI Assistant**, built with **React 19**, **Vite**, **Lucide Icons**, and **KaTeX**. It connects seamlessly to the FastAPI backend running at `http://127.0.0.1:8000`.
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+---
 
-## Expanding the ESLint configuration
+## 🚀 Quick Setup & Run
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+1. **Install Dependencies**:
+   ```bash
+   npm install
+   ```
+
+2. **Start Development Server**:
+   ```bash
+   npm run dev
+   ```
+
+3. **Build for Production**:
+   ```bash
+   npm run build
+   ```
+
+---
+
+## 🔗 Full System Documentation
+
+For complete system setup instructions, backend setup, hardware requirements, and API details, please refer to the main repository README:
+
+👉 **[Root README.md](../README.md)**
